@@ -8,5 +8,5 @@ add_subdirectory(Het_GPU_Power_Measurement/)  # Include the external project
 
 add_executable(ar_aware src/ar_aware.cpp)
 
-target_link_libraries(ar_aware PRIVATE Het_GPU_Power_Measurement)
+target_link_libraries(ar_aware hetPowerMes)
 
