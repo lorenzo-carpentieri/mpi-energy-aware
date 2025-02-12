@@ -1,0 +1,3 @@
+[submodule "Het_GPU_Power_Measurement"]
+	path = Het_GPU_Power_Measurement
+	url = https://github.com/unisa-hpc/Het_GPU_Power_Measurement.git
