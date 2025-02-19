@@ -1,1 +1,3 @@
 # mpi-energy-aware
+Use following commands for compiling
+ccmake .. -DCMAKE_CXX_COMPILER="/leonardo/home/userexternal/lcarpent/intel/oneapi/compiler/2024.0/bin/icpx"  -DCMAKE_CXX_FLAGS="-fsycl -fsycl-targets=nvidia_gpu_sm_80 --cuda-path=/leonardo/prod/opt/compilers/cuda/12.1/none/ -L//leonardo/prod/opt/compilers/cuda/12.1/none/lib64/stubs/ -lnvidia-ml  -fno-sycl-id-queries-fit-in-int -O3  -lmpi  -ldl -lrt -lpthread -DMPI_ENERGY_DEBUG"  
