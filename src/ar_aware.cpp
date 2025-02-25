@@ -50,8 +50,8 @@ int main(int argc, char *argv[]) {
     synergy::device sy_dev= queue.get_synergy_device();
     // synergy::device sy_dev = queue.get_synergy_device();
       // Print rank, total processes, and selected GPU name
-    std::cout << "MPI Rank " << rank << "/" << size 
-              << " using GPU: " << selected_device.get_info<sycl::info::device::name>() << std::endl;
+    // std::cout << "MPI Rank " << rank << "/" << size 
+    //           << " using GPU: " << selected_device.get_info<sycl::info::device::name>() << std::endl;
 
     // Contains the different size used for testing
     size_t* buff_size_byte = (size_t*) malloc(sizeof(size_t)*MAX_BUF);
@@ -106,7 +106,7 @@ int main(int argc, char *argv[]) {
     
    if (rank==0){
         // Results in csv format
-        std::cout << "run,byte,mem_cpy_time_ms,time_ms,host_energy_uj,min_goodput_Gbs"<<std::endl;  
+        std::cout << "approach,run,chain_size,byte,mem_cpy_time_ms,time_ms,host_energy_uj,min_goodput_Gbs"<<std::endl;  
     }
 
     // Run MPI_All_Reduce for each size
@@ -114,6 +114,7 @@ int main(int argc, char *argv[]) {
         double avg_host_energy_uj=0;
         float avg_time_s=0;
         float avg_mem_cpy_t_s=0;
+        int chain_size=0;
         // Repeat each test MAX_RUN times
         for(int run = 0; run < MAX_RUN; run++){
 
@@ -131,7 +132,7 @@ int main(int argc, char *argv[]) {
             PowerProfiler power_prof(sy_dev, POWER_SAMPLING_RATE, power_file);
             power_prof.start();
             
-            int chain_size = 0;
+            chain_size = 0;
             while((ar_time) < (TIME_TO_ACHIEVE_MS*1000)){  
                 auto host_energy_uj_start = queue.host_energy_consumption();
                 auto start_s = std::chrono::high_resolution_clock::now();      
@@ -169,7 +170,7 @@ int main(int argc, char *argv[]) {
                 avg_time_s+=single_run_time_s;
 
                 // Print results for each run
-                std::cout << "run_"<<run << ","<< buff_size_byte[i] << ","<< mem_cpy_t_s * 1000 <<"," << single_run_time_s*1000 << ","<< ar_single_run_energy_uj <<"," << std::fixed << std::setprecision(15) << (data_Gb/single_run_time_s) <<std::endl; 
+                std::cout << "ar_aware," <<"run_"<<run << ","<<chain_size<<","<< buff_size_byte[i] << ","<< mem_cpy_t_s * 1000 <<"," << single_run_time_s*1000 << ","<< ar_single_run_energy_uj <<"," << std::fixed << std::setprecision(15) << (data_Gb/single_run_time_s) <<std::endl; 
             }
         }
 
@@ -177,7 +178,7 @@ int main(int argc, char *argv[]) {
             float data_Gb = static_cast<double>(buff_size_byte[i]) / 1.25e+8;
             avg_time_s/=MAX_RUN;
             avg_host_energy_uj/=MAX_RUN;
-            std::cout << "run_avg" << ","<< buff_size_byte[i] << ","<< "N/A" <<"," << avg_time_s*1000 << ","<< avg_host_energy_uj <<"," << std::fixed << std::setprecision(15) << (data_Gb/avg_time_s) <<std::endl;  
+            std::cout << "ar_aware," << "run_avg" << ","<<chain_size << "," << buff_size_byte[i] << ","<< "N/A" <<"," << avg_time_s*1000 << ","<< avg_host_energy_uj <<"," << std::fixed << std::setprecision(15) << (data_Gb/avg_time_s) <<std::endl;  
         }
     }
 
