@@ -9,7 +9,7 @@
 
 #define MAX_RUN 5
 #define WARM_UP_RUN 5
-#define TIME_TO_ACHIEVE_MS 500
+#define TIME_TO_ACHIEVE_MS 5000
 #define POWER_SAMPLING_RATE_MS 5
 #define dtype uint8_t
 #define MAX_BUF 100
@@ -71,7 +71,8 @@ int main(int argc, char *argv[]) {
     }
 
     if (rank == 0)
-        std::cout << "approach,run,chain_size,byte,mem_cpy_time_ms,time_ms,min_goodput_Gbs" << std::endl;
+        std::cout << "approach,run,chain_size,num_byte,mem_cpy_time_ms,time_ms,min_goodput_Gbs" << std::endl;
+    
     cudaMemset(d_sendbuf, rank, buff_size_byte[num_iters-1]);
     auto mem_cpy_t_start = std::chrono::high_resolution_clock::now();
     cudaMemcpy(h_sendbuf, d_sendbuf, buff_size_byte[num_iters-1], cudaMemcpyDeviceToHost);
@@ -85,7 +86,8 @@ int main(int argc, char *argv[]) {
             float ar_time = 0;
             chain_size = 0;
 
-            std::string power_file = log_path + "/ar_nccl_" + std::to_string(buff_size_byte[i]) + "B"+"_rank"+ std::to_string(rank) + ".pow";
+            // std::string power_file = log_path + "/ar_nccl_" + std::to_string(buff_size_byte[i]) + "B"+"_rank"+ std::to_string(rank) + ".pow";
+            std::string power_file = log_path + "_" + std::to_string(buff_size_byte[i]) + "B"+"_rank"+ std::to_string(rank) + ".pow";
             PowerProfiler powerProf(rank % numGPUs, POWER_SAMPLING_RATE_MS, power_file);
             powerProf.start();
             while (ar_time < (TIME_TO_ACHIEVE_MS * 1000)) {
@@ -100,6 +102,7 @@ int main(int argc, char *argv[]) {
                 MPI_Allreduce(MPI_IN_PLACE, &ar_time, 1, MPI_FLOAT, MPI_MAX, MPI_COMM_WORLD);
                 chain_size++;
             }
+            //TODO: print in the csv also the device energy and the host energy. Without the need of parsing power file.
             powerProf.stop();
 
             float mem_cpy_t = std::chrono::duration_cast<std::chrono::microseconds>(mem_cpy_t_end - mem_cpy_t_start).count();
@@ -110,13 +113,13 @@ int main(int argc, char *argv[]) {
                 float ar_time_s = (ar_time / 1e+6);
                 float single_run_time_s = (ar_time_s / chain_size);
                 avg_time_s += single_run_time_s;
-                std::cout << "ar_nccl," << "run_" << run << "," << chain_size << "," << buff_size_byte[i] << "," << mem_cpy_t_s * 1000 << "," << single_run_time_s * 1000 << "," << (data_Gb / single_run_time_s) << std::endl;
+                std::cout << "ar_cuda_nccl," << "run_" << run << "," << chain_size << "," << buff_size_byte[i] << "," << mem_cpy_t_s * 1000 << "," << single_run_time_s * 1000 << "," << (data_Gb / single_run_time_s) << std::endl;
             }
         }
         if (rank == 0) {
             float data_Gb = static_cast<double>(buff_size_byte[i]) / 1.25e+8;
             avg_time_s /= MAX_RUN;
-            std::cout << "ar_nccl,run_avg," << chain_size << "," << buff_size_byte[i] << ",N/A," << avg_time_s * 1000 << "," << (data_Gb / avg_time_s) << std::endl;
+            std::cout << "ar_cuda_nccl,run_avg," << chain_size << "," << buff_size_byte[i] << ",N/A," << avg_time_s * 1000 << "," << (data_Gb / avg_time_s) << std::endl;
         }
     }
     cudaMemcpy(d_recvbuf, h_recvbuf, buff_size_byte[num_iters-1], cudaMemcpyHostToDevice);

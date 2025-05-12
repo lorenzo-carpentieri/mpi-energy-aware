@@ -19,14 +19,13 @@ byte_mapping = {
 }
 
 def generate_plot(csv_dir, app):
-    num_gpus=4
+    num_gpus=4 # we have a node with 4 gpus
     cuda_time_file = os.path.join(csv_dir, 'all_mpi_cuda_time.csv')
     cuda_power_file = os.path.join(csv_dir, 'all_mpi_cuda_power.csv')
     
     cuda_time_df= pd.read_csv(cuda_time_file)
     cuda_power_df= pd.read_csv(cuda_power_file)
     
-   
     # Ensure both columns have the same type
     cuda_time_df["num_byte"] = cuda_time_df["num_byte"].astype(float)
     cuda_power_df["num_byte"] = cuda_power_df["num_byte"].astype(float)
@@ -38,12 +37,13 @@ def generate_plot(csv_dir, app):
                             on=["approach", "num_byte"], how="right")
     
     combined_data["chain_size"] = combined_data["chain_size"].astype(float)
-    
     combined_data.rename(columns={"energy [MJ]": "device_energy [MJ]"}, inplace=True)
     combined_data['device_energy [MJ]'] /= combined_data['chain_size']
     combined_data['device_energy [MJ]'] *= num_gpus
+    
     combined_data['GbJ'] = (combined_data['num_byte'] / 1.25e+8) / (combined_data['device_energy [MJ]']*1e6) # TODO: consider host time/energy
     combined_data['num_byte'] = combined_data['num_byte'].map(byte_mapping)
+    combined_data["edp"] =  (combined_data['time_ms']/1000)*(combined_data['device_energy [MJ]']*1e6) # second * joule
 
     combined_data = combined_data[combined_data["run"]=='run_avg']
     combined_data = combined_data[combined_data["approach"].str.contains(app+"_", na=False)]
@@ -60,35 +60,22 @@ def generate_plot(csv_dir, app):
     # Create mapping dictionaries
     palette_map = {approach: color for approach, color in zip(unique_approaches, available_colors)}
     marker_map = {approach: marker for approach, marker in zip(unique_approaches, available_markers)}
+  
     ######################################### END marker and palette generation ###########################
-    
-    
+        
     # Create main plot
     fig, ax1 = plt.subplots(figsize=(10, 6))
     sns.pointplot(
-        data=combined_data, x="num_byte", y="min_goodput_Gbs", hue="approach", dodge=True, 
+        data=combined_data, x="num_byte", y="edp", hue="approach", dodge=True,
         markers=[marker_map[a] for a in unique_approaches],  # Map markers
-        palette=["tab:blue", "tab:blue", "tab:blue"], 
-        
+        palette=[palette_map[a] for a in unique_approaches], # Map colors
         ax=ax1
     )
 
     ax1.set_xlabel("")
-    ax1.set_ylabel("Min Goodput (Gb/s)")
+    ax1.set_ylabel("EDP (s*J)")
     ax1.tick_params(axis="y")
     
-    # Secondary y-axis for GbJ
-    ax2 = ax1.twinx()
-    sns.pointplot(
-        data=combined_data, x="num_byte", y="GbJ", hue="approach", dodge=True,
-        markers=[marker_map[a] for a in unique_approaches],  # Map markers
-        palette=["tab:green", "tab:green","tab:green"], linestyle="--", ax=ax2, legend=False
-    )
-    ax2.set_ylabel("Gb/J")
-    ax2.tick_params(axis="y")
-    ax2.legend().remove()
-    ax1.legend().remove()
-
     ################ Create legend map ####################
     legend_map = {}
     keywords=["Baseline", "GPU-Aware", "NCCL"]
@@ -102,60 +89,48 @@ def generate_plot(csv_dir, app):
         if matched_key:
             legend_map[keyword] = matched_key
     ######################## END legend map ##################
-    
     # Custom legend
+    print(legend_map)
     from matplotlib.lines import Line2D
     legend_elements = [
-        Line2D([0], [0], marker=marker_map[legend_map['Baseline']], color='w', markerfacecolor="tab:blue", markersize=8, label='Baseline [Gb/s]'),
-        Line2D([0], [0],marker=marker_map[legend_map['Baseline']], color='w', markerfacecolor='tab:green', markersize=8, label='Baseline [Gb/J]'),
-        Line2D([0], [0],marker=marker_map[legend_map['GPU-Aware']], color='w', markerfacecolor='tab:blue', markersize=8, label='GPU-Aware [Gb/s]'),
-        Line2D([0], [0], marker=marker_map[legend_map['GPU-Aware']], color='w', markerfacecolor='tab:green', markersize=8, label='GPU-Aware [Gb/J]'),
-        Line2D([0], [0], marker=marker_map[legend_map['NCCL']], color='w', markerfacecolor='tab:blue', markersize=8, label='NCCL [Gb/s]'),
-        Line2D([0], [0], marker=marker_map[legend_map['NCCL']], color='w', markerfacecolor='tab:green', markersize=8, label='NCCL [Gb/J]')
+        Line2D([0], [0], marker=marker_map[legend_map['Baseline']], color=palette_map[legend_map['Baseline']], markerfacecolor=palette_map[legend_map['Baseline']], markersize=8, label='Baseline'),
+        Line2D([0], [0], marker=marker_map[legend_map['GPU-Aware']], color=palette_map[legend_map['GPU-Aware']], markerfacecolor=palette_map[legend_map['GPU-Aware']], markersize=8, label='GPU-Aware'),
+        Line2D([0], [0], marker=marker_map[legend_map['NCCL']], color=palette_map[legend_map['NCCL']], markerfacecolor=palette_map[legend_map['NCCL']], markersize=8, label='NCCL'),
     ]
     ax1.legend(handles=legend_elements, title="")
     
-    plt.title("Min Goodput vs. GbJ Across Different Byte Sizes")
+    plt.title("EDP Across Different Byte Sizes")
     
     # Create zoomed-in inset plot for the first 4 points
     # Create zoomed-in inset plot for specific num_byte sizes
-    zoom_data = combined_data[combined_data["num_byte"].isin(["1B", "8B", "64B", "512B", "4KiB"])]
-    zoom_data['time_us']=zoom_data["time_ms"]*1000
-    zoom_data['device_energy [J]']=zoom_data["device_energy [MJ]"]*1e6 # energy in joule
+    zoom_data = combined_data[combined_data["num_byte"].isin(["1B", "8B", "64B", "512B", "4KiB", "32KiB", "256KiB"])]
+    zoom_data['edp']=zoom_data['time_ms']*zoom_data['device_energy [MJ]']*1e6 # edp as ms * J
     
-    # print(zoom_data)
-    axins = inset_axes(ax1, width="45%", height="45%", loc="center left", bbox_to_anchor=(0.09, -0.05, 1, 1), bbox_transform=ax1.transAxes)  # Move to left center
+    print(zoom_data)
+    axins = inset_axes(ax1, width="45%", height="45%", loc="center left", bbox_to_anchor=(0.11, -0.05, 1, 1), bbox_transform=ax1.transAxes)  # Move to left center
 
     sns.pointplot(
-        data=zoom_data, x="num_byte", y="time_ms", hue="approach", dodge=True, 
+        data=zoom_data, x="num_byte", y="edp", hue="approach", dodge=True,
         markers=[marker_map[a] for a in unique_approaches],  # Map markers
-        palette=["tab:blue", "tab:blue", "tab:blue"], ax=axins, legend=False
+        palette=[palette_map[a] for a in unique_approaches], # Map colors
+        ax=axins, legend=False
     )
-
-    axins2 = axins.twinx()
     
-    sns.pointplot(
-        data=zoom_data, x="num_byte", y="device_energy [J]", hue="approach", dodge=True,
-        markers=[marker_map[a] for a in unique_approaches],  # Map markers
-        palette=["tab:green", "tab:green", "tab:green"], linestyle="--", ax=axins2, legend=False
-    )
+
 
     axins.set_xlabel("")
-    axins.set_ylabel("Time (ms)", fontsize=10)
+    axins.set_ylabel("EDP (ms*J)", fontsize=10)
+    
     axins.legend_.remove()
-
-    axins2.set_ylabel("Energy (J)", fontsize=10)
-    axins.tick_params(axis="both", which="both", labelsize=8)
-    axins2.tick_params(axis="both", which="both", labelsize=8)
+    # ax2 = ax1.twinx()
 
     # Adjust zoomed-in x limits based on data
-    axins.set_xlim(-0.1, 4.5)  # Ensuring the first 4 num_byte sizes are in view
+    # axins.set_xlim(-0.1, 4.5)  # Ensuring the first 4 num_byte sizes are in view
 
     # Indicate zoom area on main plot
-    mark_inset(ax1, axins, loc1=2, loc2=4, fc="none", ec="black", lw=1)
-    axins2.legend_.remove()
+    # mark_inset(ax1, axins, loc1=1, loc2=1, fc="none", ec="black", lw=1)
 
-    plt.savefig(f"{app}.pdf")
+    plt.savefig(f"{app}_edp.pdf")
 
 def main():
     parser = argparse.ArgumentParser(description="Generate plot comparing Baseline vs GPU-Aware approaches")

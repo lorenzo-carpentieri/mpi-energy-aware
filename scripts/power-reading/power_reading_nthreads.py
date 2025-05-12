@@ -22,6 +22,12 @@ def extract_size_from_filename(filename):
     bytes = int(filename.split("_")[len(filename.split("_"))-2].replace("B", ""))
     return bytes
 
+
+def extract_nthreads_from_filename(filename):
+    """Extract file size from filename (assuming it contains 1B, 8B, 1KB, ..., 1GB)."""
+    nthreads = int(filename.split("_")[len(filename.split("_"))-3])
+    return nthreads
+
 def generate_config_name(filename):
     config_name=""
     if 'a2a_' in filename:
@@ -59,30 +65,30 @@ def main():
        b*=8
        
     results=[]
-    for power_dir in os.listdir(args.power_dir):
-        power_dir_path = os.path.join(args.power_dir,power_dir)
-        for power_file in sorted(os.listdir(power_dir_path)):
-            power_file_path = os.path.join(power_dir_path, power_file)
-            rank=int(power_file.split("_")[len(power_file.split('_'))-1].replace(".pow", '').replace('rank',''))
-            if rank!=0:
-                continue
-            size_bytes = extract_size_from_filename(power_file)
-            if size_bytes is None:
-                print(f"Skipping file {power_file}: Unable to determine file size.")
-                continue
-            
-            config_name = generate_config_name(power_file)
-           
-            energy = compute_energy(power_file_path) # energy in Mega Joul
-            efficiency = (size_bytes / 1.25e+8) / energy if energy > 0 else 0 # Gb/MJ
-            
-            results.append((config_name, size_bytes, energy, efficiency))
-            print(f"{config_name}: {size_bytes} bytes, {energy:.2f} MJ, {efficiency:.15f} Gb/MJ")
-    
+    for power_file in os.listdir(args.power_dir):
+        power_file_path = os.path.join(args.power_dir, power_file)
+        rank=int(power_file.split("_")[len(power_file.split('_'))-1].replace(".pow", '').replace('rank',''))
+        if rank!=0:
+            continue
+        size_bytes = extract_size_from_filename(power_file)
+        nthreads = extract_nthreads_from_filename(power_file)
+        
+        if size_bytes is None:
+            print(f"Skipping file {power_file}: Unable to determine file size.")
+            continue
+        
+        config_name = generate_config_name(power_file)
+        
+        energy = compute_energy(power_file_path) # energy in Mega Joul
+        efficiency = (size_bytes / 1.25e+8) / energy if energy > 0 else 0 # Gb/MJ
+        
+        results.append((config_name, nthreads, size_bytes, energy, efficiency))
+        print(f"{config_name}: {size_bytes} bytes, {energy:.2f} MJ, {efficiency:.15f} Gb/MJ")
+
 
     
-    df_results = pd.DataFrame(results, columns=["approach", "num_byte", "energy [MJ]", "Gb/MJ"])
-    df_results = df_results.sort_values(by=["approach", "num_byte"], ascending=[True, True])
+    df_results = pd.DataFrame(results, columns=["approach","nthreads", "num_byte", "energy [MJ]", "Gb/MJ"])
+    df_results = df_results.sort_values(by=["approach", "nthreads", "num_byte"], ascending=[True, True, True])
     df_results.to_csv(args.output, index=False)
     print(f"Results saved to {args.output}")
 

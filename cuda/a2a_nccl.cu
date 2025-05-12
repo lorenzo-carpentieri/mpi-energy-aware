@@ -9,7 +9,7 @@
 
 #define MAX_RUN 5
 #define WARM_UP_RUN 5
-#define TIME_TO_ACHIEVE_MS 500
+#define TIME_TO_ACHIEVE_MS 5000
 #define POWER_SAMPLING_RATE_MS 5
 #define dtype uint8_t
 #define MAX_BUF 100
@@ -118,13 +118,13 @@ int main(int argc, char *argv[]) {
                 float ar_time_s = (ar_time / 1e+6);
                 float single_run_time_s = (ar_time_s / chain_size);
                 avg_time_s += single_run_time_s;
-                std::cout << "a2a_nccl," << "run_" << run << "," << chain_size << "," << buff_size_byte[i] << "," << mem_cpy_t_s * 1000 << "," << single_run_time_s * 1000 << "," << (data_Gb / single_run_time_s) << std::endl;
+                std::cout << "a2a_cuda_nccl," << "run_" << run << "," << chain_size << "," << buff_size_byte[i] << "," << mem_cpy_t_s * 1000 << "," << single_run_time_s * 1000 << "," << (data_Gb / single_run_time_s) << std::endl;
             }
         }
         if (rank == 0) {
             float data_Gb = static_cast<double>(buff_size_byte[i]) / 1.25e+8;
             avg_time_s /= MAX_RUN;
-            std::cout << "a2a_nccl,run_avg," << chain_size << "," << buff_size_byte[i] << ",N/A," << avg_time_s * 1000 << "," << (data_Gb / avg_time_s) << std::endl;
+            std::cout << "a2a_cuda_nccl,run_avg," << chain_size << "," << buff_size_byte[i] << ",N/A," << avg_time_s * 1000 << "," << (data_Gb / avg_time_s) << std::endl;
         }
     }
     cudaMemcpy(d_recvbuf, h_recvbuf, buff_size_byte[num_iters-1], cudaMemcpyHostToDevice);
