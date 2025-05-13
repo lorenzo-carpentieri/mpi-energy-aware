@@ -2,6 +2,7 @@
 #SBATCH --job-name=all_reduce_launch
 #SBATCH --nodes=1
 #SBATCH --ntasks=4
+#SBATCH --cpus-per-task=1	
 #SBATCH --gpus=4
 #SBATCH --time=10:00:00
 #SBATCH --partition=boost_usr_prod

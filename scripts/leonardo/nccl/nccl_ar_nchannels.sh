@@ -3,6 +3,7 @@
 #SBATCH --nodes=1
 #SBATCH --ntasks=4
 #SBATCH --gpus=4
+#SBATCH --cpus-per-task=1	
 #SBATCH --time=10:00:00
 #SBATCH --partition=boost_usr_prod
 #SBATCH --account=IscrC_NETTUNE_0
