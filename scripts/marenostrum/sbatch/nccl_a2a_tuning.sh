@@ -31,4 +31,4 @@ export NCCL_MAX_CTAS=$nchannels
 echo "Running with NCCL_PROTO  $prot, NCCL_ALGO $alg, NCCL_NTHREADS $nthreads, NCCL_MAX_CTAS $nchannels"
 ### CUDA RUN ###
 # all_to_all
-mpirun  ./cuda/exe/a2a_nccl /leonardo/home/userexternal/lcarpent/mpi-energy/mpi-energy-aware/logs/power/nccl/a2a/a2a_prot${prot}_alg${alg}_threads${nthreads}_channels${nchannels} /leonardo/home/userexternal/lcarpent/mpi-energy/mpi-energy-aware/logs/perf/nccl/a2a/a2a_prot${prot}_alg${alg}_threads${nthreads}_channels${nchannels}.csv
+mpirun  ./cuda/exe/a2a_nccl /gpfs/home/unsa/unsa895905/energy-ws/mpi-energy-aware-main/logs/power/nccl/a2a/a2a_prot${prot}_alg${alg}_threads${nthreads}_channels${nchannels} /gpfs/home/unsa/unsa895905/energy-ws/mpi-energy-aware-main/logs/perf/nccl/a2a/a2a_prot${prot}_alg${alg}_threads${nthreads}_channels${nchannels}.csv

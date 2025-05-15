@@ -1,14 +1,14 @@
 #!/bin/bash
-#SBATCH --job-name=mpi_energy_tuning
+#SBATCH --job-name=mpi_ar_energy_tuning
 #SBATCH --nodes=1
 #SBATCH --ntasks=4
-#SBATCH --gpus=4
-#SBATCH --cpus-per-task=1	
-#SBATCH --time=10:00:00
-#SBATCH --partition=boost_usr_prod
-#SBATCH --account=IscrC_NETTUNE_0
-#SBATCH --output=/leonardo/home/userexternal/lcarpent/mpi-energy/mpi-energy-aware/logs/perf/nccl/ar/%x.%j.out
-#SBATCH --profile=Energy  # Enables energy profiling
+#SBATCH --gres=gpu:4
+#SBATCH --cpus-per-task=1
+#SBATCH --partition=acc
+#SBATCH --qos=acc_debug	
+#SBATCH --time=00:01:30
+#SBATCH --account=ehpc112
+#SBATCH --output=/gpfs/home/unsa/unsa895905/energy-ws/mpi-energy-aware-main/logs/perf/nccl/ar/%x.%j.out
 #SBATCH --exclusive
 
 
@@ -20,7 +20,6 @@ alg=$1
 prot=$2
 nthreads=$3
 nchannels=$4
-# TODO: add other env variables like buff size and launch mode, 
 
 # Parameters are tuned by NCCL. 
 export NCCL_ALGO=$alg
@@ -32,5 +31,6 @@ export NCCL_MAX_CTAS=$nchannels
 echo "Running with NCCL_PROTO  $prot, NCCL_ALGO $alg, NCCL_NTHREADS $nthreads, NCCL_MAX_CTAS $nchannels"
 ### CUDA RUN ###
 # all_reduce
-mpirun  ./cuda/exe/ar_nccl /leonardo/home/userexternal/lcarpent/mpi-energy/mpi-energy-aware/logs/power/nccl/ar/ar_prot${prot}_alg${alg}_threads${nthreads}_channels${nchannels} /leonardo/home/userexternal/lcarpent/mpi-energy/mpi-energy-aware/logs/perf/nccl/ar/ar_prot${prot}_alg${alg}_threads${nthreads}_channels${nchannels}.csv
-mpirun  ./cuda/exe/ar_nccl /leonardo/home/userexternal/lcarpent/mpi-energy/mpi-energy-aware/logs/power/nccl/ar/ar_prot${prot}_alg${alg}_threads${nthreads}_channels${nchannels} /leonardo/home/userexternal/lcarpent/mpi-energy/mpi-energy-aware/logs/perf/nccl/ar/ar_prot${prot}_alg${alg}_threads${nthreads}_channels${nchannels}.csv
+
+
+mpirun  ./cuda/exe/ar_nccl /gpfs/home/unsa/unsa895905/energy-ws/mpi-energy-aware-main/logs/power/nccl/ar/ar_prot${prot}_alg${alg}_threads${nthreads}_channels${nchannels} /gpfs/home/unsa/unsa895905/energy-ws/mpi-energy-aware-main/logs/perf/nccl/ar/ar_prot${prot}_alg${alg}_threads${nthreads}_channels${nchannels}.csv
