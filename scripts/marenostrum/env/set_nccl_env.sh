@@ -1,0 +1,1 @@
+module load  cuda/12.3   gcc/11.4.0 nccl/2.20.5   openmpi/4.1.5-gcc 

@@ -89,7 +89,7 @@ def print_pareto(df, x_obj, y_obj, pareto_line_color, pareto_label_name):
 
 def generate_plot(df, out_dir, app):
     os.makedirs(out_dir, exist_ok=True)
-        
+    
     
     
    
@@ -97,23 +97,13 @@ def generate_plot(df, out_dir, app):
     df["num_byte"] = df["num_byte"].astype(int)
 
     df["approach"] = df["approach"].astype(str)
-    
-    # device energy in MJ
-    df['device_energy [MJ]']= df['device_energy']/ 1_000_000
-    df['GbJ'] = (df['num_byte'] / 1.25e+8) / (df['device_energy [MJ]']*1e6)
-    
-    # TODO: add host energy
    
     df = df[df["run"]=='run_avg']
     df = df[df["approach"].str.contains(app+"_", na=False)] # Extract the data related to the collective specified by app
-    # Create a new column for hue and style
-    df["Protocols x Algorithms"] = df["prot"] + " - " + df["alg"]
-    df["Threads x Channels"] = df["threads"].astype(str) + " - " + df["channels"].astype(str)
-    df["Host Energy (J)"] = df["host_energy"] / 1000 # millijoule to joule
-    df.to_csv(f"{out_dir}/nccl_{app}_all_params.csv", index=False)
+    df = df.sort_values(by=['prot', 'alg', 'threads', 'channels'])
 
     # type can be host or device
-    def host_device_energy_plot(df, type):
+    def host_device_energy_plot(df, type, plot_name):
         
         # Unique message sizes
         msg_sizes = sorted(df["num_byte"].unique())
@@ -182,132 +172,49 @@ def generate_plot(df, out_dir, app):
 
         plt.tight_layout()
         plt.subplots_adjust(right=0.85)  # Leave space for legend
-        plt.savefig(f"{out_dir}/nccl_{app}_all_params_{type}_energy.pdf")
+        plt.savefig(f"{out_dir}/{plot_name}")
         plt.clf()      # Clears the current figure
         plt.cla()      # Clears the current axes
         plt.close()   
 
-    host_device_energy_plot(df, "host")
-    host_device_energy_plot(df, "device")
-    host_device_energy_plot(df, "host_device")
+    # all configurations
+    host_device_energy_plot(df, "host", f"nccl_{app}_all_params_host_energy.pdf")
+    host_device_energy_plot(df, "device",  f"nccl_{app}_all_params_device_energy.pdf")
+    host_device_energy_plot(df, "host_device",  f"nccl_{app}_all_params_host_device_energy.pdf")
     
+    channels = sorted(df["channels"].unique())
     
-    # ################### Generate marker and palette for each approach ###################################
-    # # Get unique approaches 
-    # unique_tuning_params = combined_data[tuning_param].unique()
-
-    # # Define available colors and markers
-    # available_colors = sns.color_palette("tab20", len(unique_tuning_params))  # Get a list of distinct colors
-    # available_markers = list(itertools.islice(itertools.cycle(all_markers), len(unique_tuning_params)))
-
-    # # Create mapping dictionaries
-    # palette_map = {nthread: color for nthread, color in zip(unique_tuning_params, available_colors)}
-    # marker_map = {nthread: marker for nthread, marker in zip(unique_tuning_params, available_markers)}
-    # ######################################### END marker and palette generation ###########################
-    # print(marker_map)
-    
-    # filter_num_byte=[8, 512, 32768, 262144, 2097152, 134217728, 1073741824]
-    
-    # figureSize=(25,3.5)
-    # if "buffsize" in tuning_param:
-    #     figureSize=(30,4.5)
-   
+    # Different plot for each nchannels value
+    for channel in channels:
+        # take only the row with channels == channel
+        filtered_df = df[df['channels']==channel]
+        host_device_energy_plot(filtered_df, "host", f"nccl_{app}_channel{channel}_host_energy.pdf")
+        host_device_energy_plot(filtered_df, "device",  f"nccl_{app}_channel{channel}_device_energy.pdf")
+        host_device_energy_plot(filtered_df, "host_device",  f"nccl_{app}_channel{channel}_host_device_energy.pdf")
         
-    # fig, axes = plt.subplots(1, len(filter_num_byte), figsize=figureSize)  # Adjust figsize as needed
+    threads = sorted(df["threads"].unique())
+    # Different plot for each nthreads value
+    for t in threads:
+        # take only the row with channels == channel
+        filtered_df = df[df['threads']==t]
+        host_device_energy_plot(filtered_df, "host", f"nccl_{app}_threads{t}_host_energy.pdf")
+        host_device_energy_plot(filtered_df, "device",  f"nccl_{app}_threads{t}_device_energy.pdf")
+        host_device_energy_plot(filtered_df, "host_device",  f"nccl_{app}_threads{t}_host_device_energy.pdf")
     
-    # fig.suptitle(f"{lib}/{coll}/{tuning_param}", fontsize=14, fontweight='bold')
-
-    # # filter_num_byte=['8B', '512B', '32KiB', '1GiB']
     
-    # for i, ax in enumerate(axes):
-    #     # take only 8B, 512B, 32KiB, 16MiB, 1GiB
-    #     filtered_data = combined_data[combined_data["num_byte"]==filter_num_byte[i]]
-    #     x_obj="Min Goodput (Gb/s)"
-    #     y_obj="Energy (J)"
-    #     filtered_data.loc[:, y_obj] = filtered_data['device_energy [MJ]'] * 1_000_000  
-    #     filtered_data.loc[:, x_obj] = filtered_data['min_goodput_Gbs']
-      
-    #     # For readibility we use different unit measure for each plot
-    #     if i < 3:
-    #         x_obj="Min Goodput Mb/s"
-    #         print(x_obj)
-    #         filtered_data[x_obj] = (filtered_data['min_goodput_Gbs'] * 1_000).round(2)
-
-    #     # filtered_data[tuning_param] = filtered_data[tuning_param].astype(int)
-    #     filtered_data = filtered_data[[tuning_param, x_obj, y_obj]]
-    #     filtered_data = filtered_data.reset_index(drop=True)
-    #     if "launch" in tuning_param:
-    #         filtered_data[tuning_param] = filtered_data[tuning_param].astype(str)
-    #     else:
-    #         filtered_data[tuning_param] = filtered_data[tuning_param].astype(int)
-
-    #     print(filtered_data)
-
-    #     sns.scatterplot(
-    #         data=filtered_data, x=x_obj, y=y_obj, 
-    #         hue=tuning_param, 
-    #         palette='tab20',
-    #         ax=ax
-    #     )
-    #     ax.set_title(f"Message size: {byte_mapping[filter_num_byte[i]]}")
-    #     # ax.legend(ncol=2, title=tuning_param)
-    #     # Get current handles and labels from the plot
-    #     if "buffsize" in tuning_param:       
-    #         handles, labels = ax.get_legend_handles_labels()
-    #         label_map = {}
-
-    #         for val in unique_tuning_params:
-    #             num = int(val)  # Make sure it's a standard Python int
-    #             if num <= 4096:
-    #                 label = f"{num}B"
-    #             elif num <= 524288:
-    #                 label = f"{num // 1024}KiB"
-    #             else:
-    #                 label = f"{round(num / (1024 * 1024))}MiB"
-    #             label_map[int(num)] = label 
-
-            
-    #         # Apply the new labels using list comprehension
-    #         new_labels = [label_map.get(int(label)) for label in labels]
-            
-    #         # Recreate the legend with modified labels
-    #         ax.legend(handles, new_labels, ncol=2, title=tuning_param)
-
-    # plt.tight_layout()
-    # plt.savefig(f"{out_dir}/{coll}_{lib}_{tuning_param}.pdf")
-    
-
 def main():
     parser = argparse.ArgumentParser(description="NCCL energy characterization with different parameters")
-    parser.add_argument('--log-dir', type=str, required=True, help="Directory containing the PERFORMAANCE data related to each library collective and tuning parameter. e.g nccl, ar, nthreads")
+    parser.add_argument('--csv-file', type=str, required=True, help="CSV file containing host/device energy and perforamnce for each  library collective and tuning parameter. e.g nccl, ar, nthreads")
     parser.add_argument('--out-dir', type=str, required=True, help="path to the plot directory. The script generate in this directory new path. e.g. out-dir/lib/collectives/tuning_parameter/ar_lib_tuning_parameter.pdf")
     parser.add_argument('--app', type=str, required=True, help="Select for which application generate the plot (e.g ar, a2a)")
-    
-    args = parser.parse_args()
-    log_dir = Path(args.log_dir)
-    out_dir = Path(args.out_dir)
-    all_dfs = []
 
-    # match protocol, algorithm, threads and channels
-    pattern = re.compile(r"prot(\w+)_alg(\w+)_threads(\d+)_channels(\d+)\.csv")
-    for csv_file_path in log_dir.glob("*.csv"):
-        df = pd.read_csv(csv_file_path)
-        match = pattern.search(csv_file_path.name)
-        if match:
-            prot, alg, threads, channels = match.groups()
-            
-            # Read CSV
-            df = pd.read_csv(csv_file_path)
-            
-            # Add extracted metadata
-            df['prot'] = prot
-            df['alg'] = alg
-            df['threads'] = int(threads)
-            df['channels'] = int(channels)
-            all_dfs.append(df)
+    args = parser.parse_args()
+    csv_file = Path(args.csv_file)
+    out_dir = Path(args.out_dir)
     
-    final_df = pd.concat(all_dfs, ignore_index=True)
-    generate_plot(final_df, out_dir, args.app)
+ 
+    all_dfs = pd.read_csv(csv_file)
+    generate_plot(all_dfs, out_dir, args.app)
    
  
 if __name__ == "__main__":
