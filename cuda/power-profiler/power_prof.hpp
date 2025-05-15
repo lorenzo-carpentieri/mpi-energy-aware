@@ -102,8 +102,8 @@ private:
     std::thread profiler_thread;
     unsigned long long start_energy;  // Total energy at the start in microjoules
     unsigned long long end_energy;
-    double start_host_energy;
-    double end_host_energy;
+    int64_t start_host_energy;
+    int64_t end_host_energy;
 
 
     std::string getCurrentTimestamp() {
