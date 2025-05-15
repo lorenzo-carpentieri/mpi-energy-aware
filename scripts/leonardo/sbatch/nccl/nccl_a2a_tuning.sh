@@ -12,7 +12,7 @@
 #SBATCH --exclusive
 
 
-module load cuda openmpi/ nvhpc/ nccl/ 
+source ./scripts/leonardo/env/set_nccl_env.sh
 export NCCL_DEBUG=TRACE     # Very detailed logs (verbose)
 
 # Loop over each value
