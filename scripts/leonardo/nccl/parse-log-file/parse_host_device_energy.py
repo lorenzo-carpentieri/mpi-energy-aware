@@ -95,22 +95,23 @@ def main():
     
     
     os.makedirs(out_dir, exist_ok=True)
+    final_df = final_df[final_df["run"]=='run_avg']
     # Ensure both columns have the same type
     final_df["num_byte"] = final_df["num_byte"].astype(int)
 
     final_df["approach"] = final_df["approach"].astype(str)
-    
+    final_df["device_energy"] = final_df["device_energy"].astype(float)
+    final_df["host_energy"] = final_df["host_energy"].astype(float)
+
     # device energy in MJ
-    final_df['device_energy [MJ]']= final_df['device_energy']/ 1_000_000
-    final_df['GbJ'] = (df['num_byte'] / 1.25e+8) / (final_df['device_energy [MJ]']*1e6)
+    final_df['device_energy [MJ]']= final_df['device_energy'] / 1_000_000
+    final_df['GbJ'] = (final_df['num_byte'] / 1.25e+8) / (final_df['device_energy [MJ]']*1e6)
     
-    # TODO: add host energy
    
-    final_df = final_df[final_df["run"]=='run_avg']
     final_df = final_df[final_df["approach"].str.contains(app+"_", na=False)] # Extract the data related to the collective specified by app
     # Create a new column for hue and style
-    final_df["Protocols x Algorithms"] = final_df["prot"] + " - " + df["alg"]
-    final_df["Threads x Channels"] = final_df["threads"].astype(str) + " - " + df["channels"].astype(str)
+    final_df["Protocols x Algorithms"] = final_df["prot"] + " - " + final_df["alg"]
+    final_df["Threads x Channels"] = final_df["threads"].astype(str) + " - " + final_df["channels"].astype(str)
     final_df["Host Energy (J)"] = final_df["host_energy"] / 1000 # millijoule to joule
     final_df.to_csv(f"{out_dir}/nccl_{app}_all_params.csv", index=False)
 
