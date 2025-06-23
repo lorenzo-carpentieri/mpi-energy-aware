@@ -11,9 +11,8 @@
 #define WARM_UP_RUN 5
 #define TIME_TO_ACHIEVE_MS 5000
 #define POWER_SAMPLING_RATE_MS 5
-#define dtype uint8_t
 #define MAX_BUF 100
-#define BYTE_STEP 8
+#define MESSAGE_SIZE_FACTOR 4
 
 template<typename T>
 void run(ncclComm_t& comm,int& rank, int& size, int& numGPUs, std::string& log_path, std::string& csv_path){ 
@@ -26,7 +25,7 @@ void run(ncclComm_t& comm,int& rank, int& size, int& numGPUs, std::string& log_p
     int i=0;
     while(num_elements * sizeof(T) <= ONE_GB ){
         buff_size_byte[i] = num_elements * sizeof(T);
-        num_elements *= 2;
+        num_elements *= MESSAGE_SIZE_FACTOR;
         i++;
     }
 
@@ -78,7 +77,9 @@ void run(ncclComm_t& comm,int& rank, int& size, int& numGPUs, std::string& log_p
             float a2a_time = 0;
             chain_size = 0;
 
-            std::string power_file = log_path + "/a2a_nccl_" + std::to_string(buff_size_byte[i]) + "B"+"_rank"+ std::to_string(rank) + ".pow";
+            // std::string power_file = log_path + "/a2a_nccl_" + std::to_string(buff_size_byte[i]) + "B"+"_rank"+ std::to_string(rank) + ".pow";
+            std::string power_file = log_path + "_" + std::to_string(buff_size_byte[i]) + "B"+"_rank"+ std::to_string(rank) + ".pow";
+
             PowerProfiler powerProf(rank % numGPUs, POWER_SAMPLING_RATE_MS, power_file);
             powerProf.start();
             while (a2a_time < (TIME_TO_ACHIEVE_MS * 1000)) {
@@ -100,7 +101,7 @@ void run(ncclComm_t& comm,int& rank, int& size, int& numGPUs, std::string& log_p
             double host_energy_mj = powerProf.get_host_energy() / static_cast<double>(chain_size); //host energy in mj for one collective run
             
             // Consider the energy consumption consumed by all CPUs and all GPUs of each rank
-            MPI_Allreduce(MPI_IN_PLACE, &host_energy_mj, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+            MPI_Allreduce(MPI_IN_PLACE, &host_energy_mj, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
             MPI_Allreduce(MPI_IN_PLACE, &dev_energy_mj, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
             // When the enery read by the profiler is negative we skip the value 
             if(host_energy_mj <=0.0){
@@ -189,10 +190,10 @@ int main(int argc, char *argv[]) {
     ncclCommInitRank(&comm, size, id, rank);
     
     // Run with different data type
-    run<uint8_t>(comm, rank, size, numGPUs, log_path, csv_path);
-    run<int>(comm, rank, size, numGPUs, log_path, csv_path);
+    // run<uint8_t>(comm, rank, size, numGPUs, log_path, csv_path);
+    // run<int>(comm, rank, size, numGPUs, log_path, csv_path);
     run<float>(comm, rank, size, numGPUs, log_path, csv_path);
-    run<double>(comm, rank, size, numGPUs, log_path, csv_path);
+    // run<double>(comm, rank, size, numGPUs, log_path, csv_path);
 
     
     ncclCommDestroy(comm);

@@ -10,12 +10,12 @@
 #include <stdlib.h>
 #include "power-profiler/power_prof.hpp"
 
-#define MAX_RUN 10
+#define MAX_RUN 5
 #define WARM_UP_RUN 5
-#define TIME_TO_ACHIEVE_MS 5000
+#define TIME_TO_ACHIEVE_MS 2000
 #define POWER_SAMPLING_RATE_MS 5
 #define MAX_BUF 100
-#define BYTE_STEP 4
+#define MESSAGE_SIZE_FACTOR 4
 
 
 template<typename T>
@@ -29,7 +29,7 @@ void run(ncclComm_t& comm,int& rank, int& numGPUs, std::string& log_path, std::s
     int i=0;
     while(num_elements * sizeof(T) <= ONE_GB ){
         buff_size_byte[i] = num_elements * sizeof(T);
-        num_elements *= 2;
+        num_elements *= MESSAGE_SIZE_FACTOR;
         i++;
     }
 
@@ -97,7 +97,7 @@ void run(ncclComm_t& comm,int& rank, int& numGPUs, std::string& log_path, std::s
             
 
             // Consider the energy consumption consumed by all CPUs and all GPUs of each rank
-            MPI_Allreduce(MPI_IN_PLACE, &host_energy_mj, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+            MPI_Allreduce(MPI_IN_PLACE, &host_energy_mj, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
             MPI_Allreduce(MPI_IN_PLACE, &dev_energy_mj, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
             // When the enery read by the profiler is negative we skip the value 
             if(host_energy_mj <=0.0){
@@ -182,10 +182,10 @@ int main(int argc, char *argv[]) {
     ncclCommInitRank(&comm, size, id, rank);
     
     // Run with different data type
-    run<uint8_t>(comm, rank, numGPUs, log_path, csv_path);
-    run<int>(comm, rank, numGPUs, log_path, csv_path);
+    // run<uint8_t>(comm, rank, numGPUs, log_path, csv_path);
+    // run<int>(comm, rank, numGPUs, log_path, csv_path);
     run<float>(comm, rank, numGPUs, log_path, csv_path);
-    run<double>(comm, rank, numGPUs, log_path, csv_path);
+    // run<double>(comm, rank, numGPUs, log_path, csv_path);
 
     
     ncclCommDestroy(comm);
