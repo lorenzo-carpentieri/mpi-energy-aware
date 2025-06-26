@@ -46,7 +46,7 @@ tuning_parameters_map={
     "buffsize":"NCCL_BUFFSIZE"
 }
 
-collectives=["a2a", "ar"]
+collectives=["ar", "a2a"]
 # tuning_parameters=["nchannels", "nthreads", "launch", "buffsize"]
 # tuning_parameters=["nchannels", "nthreads"] # TODO: use all tuning paramters
 tuning_parameters=["launch"] # TODO: use all tuning paramters
@@ -96,7 +96,6 @@ def print_pareto(df, x_obj, y_obj, pareto_line_color, pareto_label_name):
     df_xobj_yobj = pd.DataFrame({f"{x_obj}": df[x_obj], f"{y_obj}": df[y_obj]})
     mask = paretoset(df_xobj_yobj, sense=["max", "min"])
     pset = df_xobj_yobj[mask]
-    print(pset) 
     pset = pset.sort_values(by=[f"{x_obj}"])
     df_filtered = df.merge(pset, on=[f"{x_obj}", f"{y_obj}"])
 
@@ -139,7 +138,6 @@ def generate_plot(df, out_dir, app):
     
    
     df = df[df["run"]=='run_avg']
-    df = df[df["approach"].str.contains(app+"_", na=False)] # Extract the data related to the collective specified by app
     df = df.sort_values(by=['Protocols x Algorithms', 'Threads x Channels'])
    
     ################### GENERATE COLO AND MARKER MAP #########################
@@ -152,10 +150,8 @@ def generate_plot(df, out_dir, app):
     style_order = sorted(threads_x_channels)
     palette = sns.color_palette("tab10", len(hue_order))
     palette_map = dict(zip(hue_order, palette))
-
     markers = all_markers  # extend if needed
     marker_map = dict(zip(style_order, markers))
-    
     ################### GENERATE COLO AND MARKER MAP #########################
     
     # type can be host, device or host_device
@@ -182,6 +178,11 @@ def generate_plot(df, out_dir, app):
                 col = i % ncols
                 ax = axes[row][col]
                 filtered_data = df_t[df_t["num_byte"]==msg_sizes[i]]
+                filtered_data = filtered_data.drop_duplicates(
+                    subset=["Protocols x Algorithms", "Threads x Channels"],
+                    keep="first"          # or "last" if you prefer the final occurrence
+                )
+                
                 if filtered_data.empty:
                     continue
                 
@@ -272,7 +273,13 @@ def generate_plot(df, out_dir, app):
 
             plt.tight_layout()
             plt.subplots_adjust(right=0.83)  # Leave space for legend
-            plt.savefig(f"{out_dir}/{plot_name}")
+            # Construct the full path
+            dir_path = f"{out_dir}/{type}"
+
+            # Create the directory if it doesn't exist
+            os.makedirs(dir_path, exist_ok=True)
+
+            plt.savefig(f"{dir_path}/{plot_name}")
             plt.clf()      # Clears the current figure
             plt.cla()      # Clears the current axes
             plt.close()   
