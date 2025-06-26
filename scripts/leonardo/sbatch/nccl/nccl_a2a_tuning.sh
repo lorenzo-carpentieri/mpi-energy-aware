@@ -14,7 +14,7 @@
 
 source ./scripts/leonardo/env/set_nccl_env.sh
 export NCCL_DEBUG=TRACE     # Very detailed logs (verbose)
-
+export NCCL_P2P_LEVEL=NVL
 # Loop over each value
 alg=$1
 prot=$2
