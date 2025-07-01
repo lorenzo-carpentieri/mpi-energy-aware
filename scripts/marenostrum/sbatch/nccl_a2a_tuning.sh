@@ -2,13 +2,13 @@
 #SBATCH --job-name=a2a_energy_tuning
 #SBATCH --nodes=1
 #SBATCH --ntasks=4
-#SBATCH --gpus=4
+#SBATCH --gres=gpu:4
 #SBATCH --cpus-per-task=1	
 #SBATCH --time=10:00:00
-#SBATCH --partition=boost_usr_prod
-#SBATCH --account=IscrC_NETTUNE_0
-#SBATCH --output=/leonardo/home/userexternal/lcarpent/mpi-energy/mpi-energy-aware/logs/perf/nccl/a2a/%x.%j.out
-#SBATCH --profile=Energy  # Enables energy profiling
+#SBATCH --partition=acc
+#SBATCH --qos=acc_ehpc
+#SBATCH --account=ehpc112
+#SBATCH --output=/home/unsa/unsa895905/energy-ws/mpi-energy-aware-main/logs/perf/nccl/a2a/%x.%j.out
 #SBATCH --exclusive
 
 
