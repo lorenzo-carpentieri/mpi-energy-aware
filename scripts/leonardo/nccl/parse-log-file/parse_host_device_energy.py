@@ -15,7 +15,6 @@ import re
 import math
 from paretoset import paretoset
 
-all_markers = ["o", "s", "^", "D", "v", "<", ">", "p", "*", "h", "H", "+", "x", "X", "|", "_"]
 
 tuning_parameters_map={
     "nchannels": "NCCL_MIN/MAX_CTAS",
