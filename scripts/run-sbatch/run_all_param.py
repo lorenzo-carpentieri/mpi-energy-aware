@@ -14,31 +14,32 @@ tuning_parameters_map={
 
 #TODO: Change this dictionary depending on the NCCL version. Some algortihms are only available for higher version of nccl.
 algorithms={
-    "ar": ["ring", "collnetdirect", "tree"],
-    # "a2a": ["ring", "collnetdirect", "tree","collnet","collnetchain","nvls","nvlstree","pat"],
+    "ar": ["ring", "collnet", "tree", "nvls"],
+    #"a2a": ["ring", "collnetdirect", "tree","collnet","collnetchain","nvls","nvlstree","pat"],
+    "a2a": ["ring", "tree","nvls", "collnet"],
+    
 } 
 
 
 # Protocols that can be used for each algorithm and collective
 protocols={
-    "ring": {"ar": ["LL", "LL128", "Simple"], "a2a": ["LL", "LL128", "Simple"]},
-    "tree": {"ar": ["LL", "LL128", "Simple"],"a2a": ["LL", "LL128", "Simple"]},
-    "collnetdirect":  {"ar": ["LL", "LL128", "Simple"],"a2a": ["LL", "LL128", "Simple"]},
-    # "collnet": {"ar": ["LL", "LL128", "Simple"],"a2a": ["LL", "LL128", "Simple"]},
-    # "collnetchain": {"ar": ["LL", "LL128", "Simple"],"a2a": ["LL", "LL128", "Simple"]},
-    # "nvls": {"ar": ["LL", "LL128", "Simple"],"a2a": ["LL", "LL128", "Simple"]},
-    # "nvlstree": {"ar": ["LL", "LL128", "Simple"],"a2a": ["LL", "LL128", "Simple"]},
-    # "pat": {"ar": ["LL", "LL128", "Simple"],"a2a": ["LL", "LL128", "Simple"]},
+    "ring": {"ar": ["LL", "LL128", "Simple"], "a2a": ["Simple"], "allGather": ["Simple"]}, #TODO: test
+    
+    # "ring": {"ar": ["LL", "LL128", "Simple"], "a2a": ["LL", "LL128", "Simple"], "allGather": ["LL", "LL128", "Simple"]},
+    "tree": {"ar": ["LL", "LL128", "Simple"],"a2a": ["LL", "LL128", "Simple"], "allGather": ["LL", "LL128", "Simple"]},
+    # "collnetdirect":  {"ar": ["LL", "LL128", "Simple"],"a2a": ["LL", "LL128", "Simple"], "allGather": ["LL", "LL128", "Simple"]},
+    "collnet": {"ar": ["LL", "LL128", "Simple"],"a2a": ["LL", "LL128", "Simple"], "allGather": ["LL", "LL128", "Simple"]},
+    # "collnetchain": {"ar": ["LL", "LL128", "Simple"],"a2a": ["LL", "LL128", "Simple"], "allGather": ["LL", "LL128", "Simple"]},
+    "nvls": {"ar": ["LL", "LL128", "Simple"],"a2a": ["LL", "LL128", "Simple"], "allGather": ["LL", "LL128", "Simple"]},
+    # "nvlstree": {"ar": ["LL", "LL128", "Simple"],"a2a": ["LL", "LL128", "Simple"], "allGather": ["LL", "LL128", "Simple"]},
+    # "pat": {"ar": ["LL", "LL128", "Simple"],"a2a": ["LL", "LL128", "Simple"], "allGather": ["LL", "LL128", "Simple"]},
+    
 } # 3
 
-nthreads= ["64","128", "256", "512"] # 4 
-nchannels= ["2", "4", "8", "16", "32"] # 5
+nthreads= ["64","128", "256", "512"] # Change here for reducing the number of test
+nchannels= ["2", "4", "8", "16", "32"] # Change here reducig the num. of test
 
 
-
-
-# collectives=["ar","a2a"]
-collectives=["ar"]# TODO: Add all collectives
 
 # tuning_parameters=["nchannels", "nthreads", "launch", "buffsize"] 
 tuning_parameters=["launch"]
@@ -77,7 +78,7 @@ def parse_args():
     parser = argparse.ArgumentParser(description="Process SBATCH scripts and manage logs.")
     parser.add_argument('--sbatch-script-file', required=True, help='SBATCH script file ')
     parser.add_argument('--log-dir', required=True, help='Base directory for log output')
-
+    parser.add_argument('--coll', required=True, help='Specify the collective (i.e. ar for allReduce, a2a for all2All)')
     return parser.parse_args()
 
 def create_log_dirs(base_log_dir, library, collective):
@@ -101,27 +102,27 @@ def main():
     args = parse_args()
     script_file = Path(args.sbatch_script_file)
     log_dir = Path(args.log_dir)
-    fixed_var = args.fix_var
+    coll = args.coll
+    # fixed_var = args.fix_var
     
     
-    backup_log_dirs(log_dir)
+    # backup_log_dirs(log_dir)
     
     # For each NCCL varaible generate different values
     tuning_parameters = generate_tuning_parameters()
 
     for lib in libraries:
-        for coll in collectives:
-            # Fix algorithm
-            for alg in algorithms[coll]:
-                # Fix protocol 
-                for prot in protocols[alg][coll]:
-                    # Fix nthreads
-                    for thread in nthreads:
-                        for channel in nchannels:
-                            create_log_dirs(log_dir, lib, coll)
-                            print(f"Executing script: {script_file}")
-                            print(f"Submitting {script_file.name} with args: {alg}, {prot}, {thread}, {channel}")
-                            subprocess.run(["sbatch", str(script_file), alg, prot, thread, channel], check=True)
+        # Fix algorithm
+        for alg in algorithms[coll]:
+            # Fix protocol 
+            for prot in protocols[alg][coll]:
+                # Fix nthreads
+                for thread in nthreads:
+                    for channel in nchannels:
+                        create_log_dirs(log_dir, lib, coll)
+                        print(f"Executing script: {script_file}")
+                        print(f"Submitting {script_file.name} with args: {alg}, {prot}, {thread}, {channel}")
+                        # subprocess.run(["sbatch", str(script_file), alg, prot, thread, channel], check=True)
 
                             
                             
