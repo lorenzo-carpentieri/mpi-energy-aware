@@ -122,7 +122,7 @@ def main():
                         create_log_dirs(log_dir, lib, coll)
                         print(f"Executing script: {script_file}")
                         print(f"Submitting {script_file.name} with args: {alg}, {prot}, {thread}, {channel}")
-                        # subprocess.run(["sbatch", str(script_file), alg, prot, thread, channel], check=True)
+                        subprocess.run(["sbatch", str(script_file), alg, prot, thread, channel], check=True)
 
                             
                             
