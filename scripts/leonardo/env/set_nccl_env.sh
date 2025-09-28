@@ -1,1 +1,1 @@
-module load cuda openmpi/ nvhpc/ nccl/ 
+module load gcc/ cuda/ openmpi/ nvhpc/ nccl/ 
