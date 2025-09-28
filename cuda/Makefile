@@ -1,6 +1,7 @@
 NVCC = nvcc
-CFLAGS = -lmpi -lnvidia-ml -lnccl -DNVML -I/leonardo/home/userexternal/lcarpent/mpi-energy/mpi-energy-aware/cuda/power-profiler
+
 SRC_DIR = $(CURDIR)
+CFLAGS = --std=c++17 -lmpi -lnvidia-ml -lnccl -DNVML -I$(SRC_DIR)/power-profiler
 EXE_DIR = $(SRC_DIR)/exe
 LOG_DIR = $(CURDIR)/../logs
 
