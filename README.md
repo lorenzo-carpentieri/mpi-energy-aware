@@ -71,13 +71,15 @@ Generate plots for all collectives:
 ```bash
 python3 scripts/leonardo/plots/nccl/nccl_all_params.py \
     --csv-file=$(pwd)/data/nccl_ar_all_params.csv \
-    --out-dir=$(pwd)/data/plots/
+    --out-dir=$(pwd)/data/plots/ \
+    --norm-energy="True"
 ```
 
 ### Script Parameters
 
 - `--csv-file` — CSV file containing time and energy data for one or more collectives.  
 - `--out-dir` — Directory where plots will be saved.  
+- `--norm-energy` — "True" if you want J/s, "False" for "J".  
 
 The plot directory contains a folder for each collective. Each collective folder includes:
 
@@ -113,7 +115,8 @@ python3 scripts/leonardo/nccl/parse-log-file/parse_host_device_energy.py \
 # Generate plots
 python3 scripts/leonardo/plots/nccl/nccl_all_params.py \
     --csv-file=$(pwd)/data/nccl_ar_all_params.csv \
-    --out-dir=$(pwd)/data/plots/
+    --out-dir=$(pwd)/data/plots/ \
+        --norm-energy="True"
 ```
 
 This sequence ensures all results are compiled, executed, parsed, and visualized.
