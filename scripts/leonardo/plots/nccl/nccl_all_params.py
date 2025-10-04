@@ -90,7 +90,7 @@ byte_mapping = {
 }
 
 
-def print_pareto(df, x_obj, y_obj, pareto_line_color, pareto_label_name):
+def print_pareto(df, x_obj, y_obj, pareto_line_color, pareto_label_name, ax):
     # Compute the pareto set point and print on the plot
     # Creaete a data frame with energy and speedup
     df_xobj_yobj = pd.DataFrame({f"{x_obj}": df[x_obj], f"{y_obj}": df[y_obj]})
@@ -99,38 +99,36 @@ def print_pareto(df, x_obj, y_obj, pareto_line_color, pareto_label_name):
     pset = pset.sort_values(by=[f"{x_obj}"])
     df_filtered = df.merge(pset, on=[f"{x_obj}", f"{y_obj}"])
 
-    return df_filtered
     
     ############# PRINT PARETO FRONT WITH A RED LINE ################
     
-    # np_array = pset.to_numpy()
-    # pset_size = len(pset[f"{x_obj}"])
+    np_array = pset.to_numpy()
+    pset_size = len(pset[f"{x_obj}"])
     
     # cur_xlim_left, cur_xlim_right = plt.xlim()
     # cur_xlim_bottom, cur_ylim_top = plt.ylim()
     # x1, y1 = [cur_xlim_left, np_array[0][0]], [np_array[0][1], np_array[0][1]]
-    # plt.plot(x1, y1, color=pareto_line_color, linewidth=2.5, label="Pareto-front")
-
-    # for i in range(pset_size):
-    #     if not (i == pset_size-1):
-    #         current_x = np_array[i][0]
-    #         current_y = np_array[i][1]
-    #         next_x = np_array[i+1][0]
-    #         next_y = np_array[i+1][1]
-    #         x1, y1 = [current_x, current_x], [current_y, next_y]
-    #         x2, y2 = [current_x, next_x], [next_y, next_y]
-    #         plt.plot(x1, y1, x2, y2, color=pareto_line_color, linewidth=2.5)
+    # plt.plot(x1, 0, color=pareto_line_color, linewidth=2.5, label="Pareto-front")
+   
+    for i in range(pset_size):
+        if not (i == pset_size-1):
+            current_x = np_array[i][0]
+            current_y = np_array[i][1]
+            next_x = np_array[i+1][0]
+            next_y = np_array[i+1][1]
+            x1, y1 = [current_x, current_x], [current_y, next_y]
+            x2, y2 = [current_x, next_x], [next_y, next_y]
+            ax.plot(x1, y1, x2, y2, color=pareto_line_color, linewidth=2.5)
     
     ############# PRINT PARETO FRONT WITH A RED LINE ################
+    return df_filtered
 
 
 
-def generate_plot(df, out_dir, app):
+def generate_plot(df, out_dir, app, norm_energy):
     os.makedirs(out_dir, exist_ok=True)
     
     
-    
-   
     # Ensure both columns have the same type
     df["num_byte"] = df["num_byte"].astype(int)
 
@@ -139,7 +137,7 @@ def generate_plot(df, out_dir, app):
    
     df = df[df["run"]=='run_avg']
     df = df.sort_values(by=['Protocols x Algorithms', 'Threads x Channels'])
-   
+    
     ################### GENERATE COLO AND MARKER MAP #########################
     
     # I need the same color and marker for all the configuration so I need to create a map
@@ -189,14 +187,29 @@ def generate_plot(df, out_dir, app):
                 x_obj="Min Goodput (Gb/s)"
                 y_obj="Device Energy (J)"
                 filtered_data.loc[:, "Device Energy (J)"] = filtered_data['device_energy [MJ]'] * 1_000_000  
+                if norm_energy:
+                    filtered_data["Device Energy per Second (J/s)"] = filtered_data["Device Energy (J)"] / (filtered_data['time_ms'] / 1_000)
+                    filtered_data["Host Energy per Second (J/s)"] = filtered_data["Host Energy (J)"] / (filtered_data['time_ms'] / 1_000)
+
                 if "device" == type:
-                    y_obj="Device Energy (J)"
+                    if norm_energy:
+                        y_obj="Device Energy per Second (J/s)"
+                    else:
+                        y_obj="Device Energy (J)"
                 elif "host" == type: 
-                    y_obj="Host Energy (J)"
+                    if norm_energy == True:
+                        y_obj="Host Energy per Second (J/s)"
+                    else:
+                        y_obj="Host Energy (J)"
+                    
                     # filtered_data = filtered_data[filtered_data[y_obj] >= 0]
                 else:
-                    y_obj="Host and Device Energy (J)"
-                    filtered_data[y_obj]=filtered_data["Host Energy (J)"] + filtered_data["Device Energy (J)"]
+                    if norm_energy == True:
+                        y_obj="Host and Device Energy per Second (J/s)"
+                        filtered_data[y_obj]=filtered_data["Host Energy per Second (J/s)"] + filtered_data["Device Energy per Second (J/s)"]
+                    else:
+                        y_obj="Host and Device Energy (J)"
+                        filtered_data[y_obj]=filtered_data["Host Energy (J)"] + filtered_data["Device Energy (J)"]
                 
                 filtered_data.loc[:, x_obj] = filtered_data['min_goodput_Gbs']
                 
@@ -207,7 +220,7 @@ def generate_plot(df, out_dir, app):
                 
                 filtered_data[x_obj] = filtered_data[x_obj].round(3)
                 if "pareto" in param_filter:
-                    pset = print_pareto(filtered_data, x_obj, y_obj, "red", "Pareto-front")
+                    pset = print_pareto(filtered_data, x_obj, y_obj, "red", "Pareto-front", ax)
                     scatter = sns.scatterplot(
                         data=pset,
                         x=x_obj,
@@ -257,19 +270,23 @@ def generate_plot(df, out_dir, app):
                 #     ax.legend_.remove()
 
                 ax.grid(True)
+                
+            # Create the legend for the pareto front.
+            from matplotlib.lines import Line2D
+            handles, labels = plt.gca().get_legend_handles_labels()
+
+            pareto_line = Line2D([0], [0], color="red", linewidth=2.5, label="Pareto-front")
+
 
             # Deduplicate handles/labels (keep order)
             from collections import OrderedDict
 
-            unique = OrderedDict(zip(all_labels, all_handles))
+            unique = OrderedDict(zip(all_labels+ ["Pareto-front"], all_handles + [pareto_line]))
             fig.legend(unique.values(), unique.keys(), loc='upper right', ncol=1, frameon=False)
             # Remove unused subplots if any
             for j in range(i + 1, nrows * ncols):
                 fig.delaxes(axes[j // ncols][j % ncols])
 
-            # # Move legend outside of plot grid
-            # handles, labels = axes[1][2].get_legend_handles_labels()
-            # fig.legend(handles, labels, loc='upper right', bbox_to_anchor=(1.0, 1))
 
             plt.tight_layout()
             plt.subplots_adjust(right=0.83)  # Leave space for legend
@@ -296,60 +313,68 @@ def generate_plot(df, out_dir, app):
     
     channels = sorted(df["channels"].unique())
     
-    # Different plot for each nchannels value
-    for channel in channels:
-        # take only the row with channels == channel
-        filtered_df = df[df['channels']==channel]
-        host_device_energy_plot(filtered_df, "host", f"channels{channel}")
-        host_device_energy_plot(filtered_df, "device", f"channels{channel}")
-        host_device_energy_plot(filtered_df, "host_device",  f"channels{channel}")
+    ############ START PRINT PLOT FOR EACH TUNING PARAMETER ###
+    
+    # # Different plot for each nchannels value
+    # for channel in channels:
+    #     # take only the row with channels == channel
+    #     filtered_df = df[df['channels']==channel]
+    #     host_device_energy_plot(filtered_df, "host", f"channels{channel}")
+    #     host_device_energy_plot(filtered_df, "device", f"channels{channel}")
+    #     host_device_energy_plot(filtered_df, "host_device",  f"channels{channel}")
         
-    threads = sorted(df["threads"].unique())
-    # Different plot for each nthreads value
-    for t in threads:
-        # take only the row with threads == t
-        filtered_df = df[df['threads']==t]
-        host_device_energy_plot(filtered_df, "host", f"threads{t}")
-        host_device_energy_plot(filtered_df, "device", f"threads{t}")
-        host_device_energy_plot(filtered_df, "host_device", f"threads{t}")
+    # threads = sorted(df["threads"].unique())
+    # # Different plot for each nthreads value
+    # for t in threads:
+    #     # take only the row with threads == t
+    #     filtered_df = df[df['threads']==t]
+    #     host_device_energy_plot(filtered_df, "host", f"threads{t}")
+    #     host_device_energy_plot(filtered_df, "device", f"threads{t}")
+    #     host_device_energy_plot(filtered_df, "host_device", f"threads{t}")
     
-    # Different plot for each algorithm
-    algorithms = sorted(df['alg'].unique())
-    for alg in algorithms:
-        # take only the row with algorithm == alg
-        filtered_df = df[df['alg']==alg]
-        host_device_energy_plot(filtered_df, "host", f"alg{alg}")
-        host_device_energy_plot(filtered_df, "device", f"alg{alg}")
-        host_device_energy_plot(filtered_df, "host_device", f"alg{alg}")
+    # # Different plot for each algorithm
+    # algorithms = sorted(df['alg'].unique())
+    # for alg in algorithms:
+    #     # take only the row with algorithm == alg
+    #     filtered_df = df[df['alg']==alg]
+    #     host_device_energy_plot(filtered_df, "host", f"alg{alg}")
+    #     host_device_energy_plot(filtered_df, "device", f"alg{alg}")
+    #     host_device_energy_plot(filtered_df, "host_device", f"alg{alg}")
     
-    # Different plot for each protcol
-    protocols = sorted(df['prot'].unique())
-    for prot in protocols:
-        # take only the row with threads == t
-        filtered_df = df[df['prot']==prot]
-        host_device_energy_plot(filtered_df, "host", f"prot{prot}")
-        host_device_energy_plot(filtered_df, "device", f"prot{prot}")
-        host_device_energy_plot(filtered_df, "host_device", f"prot{prot}")
+    # # Different plot for each protcol
+    # protocols = sorted(df['prot'].unique())
+    # for prot in protocols:
+    #     # take only the row with threads == t
+    #     filtered_df = df[df['prot']==prot]
+    #     host_device_energy_plot(filtered_df, "host", f"prot{prot}")
+    #     host_device_energy_plot(filtered_df, "device", f"prot{prot}")
+    #     host_device_energy_plot(filtered_df, "host_device", f"prot{prot}")
     
-    
+    ########## END PRINT PLOT FOR EACH TUNING PARAMETER ##########
+
     
     
 def main():
     parser = argparse.ArgumentParser(description="NCCL energy characterization with different parameters")
     parser.add_argument('--csv-file', type=str, required=True, help="CSV file containing host/device energy and perforamnce for each  library collective and tuning parameter. e.g nccl, ar, nthreads")
     parser.add_argument('--out-dir', type=str, required=True, help="path to the plot directory. The script generate in this directory a new folder for each collective")
-
+    parser.add_argument('--norm-energy', type=str, default="False", help="True to normalize the energy with the time (J/s)")
     args = parser.parse_args()
     csv_file = Path(args.csv_file)
     out_dir = Path(args.out_dir)
-    
+    norm_energy = (args.norm_energy=="True")
+    if(norm_energy==False):
+        print("Energy is not normalized")
+    else:
+        print("Energy is normalized")
+        
     all_dfs = pd.read_csv(csv_file)
     for coll in collectives:
         df_coll = all_dfs[all_dfs['approach'] == f"{coll}_cuda_nccl"]
         if df_coll.empty:
             print(f"No data for {coll} collective")
             continue
-        generate_plot(df_coll, f"{out_dir}/{coll}/", coll)
+        generate_plot(df_coll, f"{out_dir}/{coll}/", coll, norm_energy)
 
     
 if __name__ == "__main__":
